@@ -1,0 +1,6 @@
+module Pods_SearchList_SearchListTests {
+  umbrella header "Pods-SearchList-SearchListTests-umbrella.h"
+
+  export *
+  module * { export * }
+}
