@@ -100,5 +100,6 @@ export default [
   {'searchStr': '陈之法'},
   {'searchStr': '林虹绮'},
   {'searchStr': '昌宁欢'},
-  {'searchStr': '黄惠君'}
+  {'searchStr': '黄惠君'},
+  {'searchStr': '&ZHU'}
 ]

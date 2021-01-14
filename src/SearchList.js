@@ -6,7 +6,8 @@ import {
   Animated,
   Image,
   Platform,
-  SectionList
+  SectionList,
+  TouchableOpacity
 } from 'react-native';
 
 import React, { Component } from 'react';
@@ -196,23 +197,23 @@ export default class SearchList extends Component {
   }
 
   /**
-   * default section header in ListView
+   * default section header in SectionList
    * @param sectionData
    * @param sectionID
    * @returns {XML}
    * @private
    */
   _renderSectionHeader({ section: { title } }) {
-    const { sectionHeaderHeight } = this.props;
+    const { sectionHeaderHeight, sectionHeaderStyle, sectionTitleStyle } = this.props;
 
     return (
-      <View style={[styles.sectionHeader, { height: sectionHeaderHeight }]}>
+      <View style={[styles.sectionHeader, sectionHeaderStyle]}>
         <View
           style={{
             justifyContent: 'center',
             height: sectionHeaderHeight
           }}>
-          <Text style={styles.sectionTitle}>{title}</Text>
+          <Text style={[styles.sectionTitle, sectionTitleStyle]}>{title}</Text>
         </View>
       </View>
     );
@@ -228,12 +229,11 @@ export default class SearchList extends Component {
   _renderSectionIndexItem(section) {
     return (
       <Text
-        style={{
+        style={[{
           textAlign: 'center',
-          color: this.props.sectionIndexTextColor,
-          fontSize: 14,
-          height: 20
-        }}>
+          color: '#000',
+          height:20,
+        }, this.props.sectionIndexTextSytle]}>
         {section}
       </Text>
     );
@@ -258,7 +258,7 @@ export default class SearchList extends Component {
         <View
           style={{
             height: 1 / PixelRatio.get(),
-            backgroundColor: '#fafafa'
+            backgroundColor: '#E0E0E0'
           }}
         />
       </View>
@@ -283,6 +283,15 @@ export default class SearchList extends Component {
     return null;
   }
 
+  _renderEmptyResult () {
+    return (
+      <View style={styles.emptyDataSource}>
+        <Text style={{color: '#000', fontSize: 16, paddingTop: 100, opacity: 0.3, lineHeight: 24}}> 暂无搜索记录 </Text>
+      </View>
+      
+    )
+  }
+
   /**
    *
    * @param item
@@ -299,9 +308,17 @@ export default class SearchList extends Component {
           flex: 1,
           marginLeft: 20,
           height: this.props.rowHeight,
-          justifyContent: 'center'
+          justifyContent: 'center',
+          height: 56
         }}>
-        <HighlightableText text={item.searchStr} matcher={item.matcher} />
+        
+        <HighlightableText
+          text={item.searchStr}
+          matcher={item.matcher}
+          textStyle={this.props.rowTextStyle}
+          choosenTextStyle={this.props.choosenRowTextStyle}
+          unchoosenTextStyle={this.props.unchoosenRowTextStyle}
+        />
       </View>
     );
   }
@@ -316,21 +333,32 @@ export default class SearchList extends Component {
   }
 
   exitSearchState() {
-    Animated.timing(this.state.animatedValue, {
-      duration: this.props.searchBarToggleDuration || Theme.duration.toggleSearchBar,
-      toValue: 0,
-      useNativeDriver: true
-    }).start(() => {
-      this.search('');
-      this.setState({ isSearching: false });
-    });
+    // Animated.timing(this.state.animatedValue, {
+    //   duration: this.props.searchBarToggleDuration || Theme.duration.toggleSearchBar,
+    //   toValue: 0,
+    //   useNativeDriver: true
+    // }).start(() => {
+    //   this.search('');
+    //   this.setState({ isSearching: false });
+    // });
+    this.search('');
+    this.setState({ isSearching: false });
   }
 
   onFocus() {
     if (!this.state.isSearching) {
       this.enterSearchState();
     }
-    this.props.onSearchStart && this.props.onSearchStart();
+    // this.props.onSearchStart && this.props.onSearchStart();
+   
+  }
+
+  historySearch() {
+    return(
+      <View style={styles.emptySearchResult}>
+        <Text style={{color: '#979797', fontSize: 18, paddingTop: 20}}> 历史搜索</Text>
+      </View>
+    )
   }
 
   onBlur() {
@@ -344,6 +372,17 @@ export default class SearchList extends Component {
 
   cancelSearch() {
     this.refs.searchBar && this.refs.searchBar.cancelSearch && this.refs.searchBar.cancelSearch();
+  }
+
+  onSearchStart() {
+    console.log("asdfasdfasdf")
+    return (
+      <View style={styles.emptySearchResult}>
+        <Text style={{color: '#979797', fontSize: 18, paddingTop: 20}}> No Result For <Text
+          style={{color: '#171a23', fontSize: 18}}>dasdasd</Text></Text>
+        <Text style={{color: '#979797', fontSize: 18, alignItems: 'center', paddingTop: 10}}>Please search again</Text>
+      </View>
+    )
   }
 
   scrollToSection(sectionIndex) {
@@ -363,22 +402,15 @@ export default class SearchList extends Component {
   }
 
   render() {
+    const {isSearching} = this.state
     return (
-      <Animated.View
+      <View
         ref="view"
         style={[
           {
             // 考虑上动画以后页面要向上移动，这里必须拉长
             height: Theme.size.windowHeight + this.props.toolbarHeight,
             width: Theme.size.windowWidth,
-            transform: [
-              {
-                translateY: this.state.animatedValue.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, -this.props.toolbarHeight]
-                })
-              }
-            ]
           },
           this.props.style
         ]}>
@@ -404,7 +436,7 @@ export default class SearchList extends Component {
               onBlur={this.onBlur}
               onClickCancel={this.onClickCancel}
               cancelTitle={this.props.cancelTitle}
-              cancelTextColor={this.props.cancelTextColor}
+              cancelTextStyle={this.props.cancelTextStyle}
               searchBarBackgroundColor={this.props.searchBarBackgroundColor}
               searchInputBackgroundColor={this.props.searchInputBackgroundColor}
               searchInputBackgroundColorActive={this.props.searchInputBackgroundColorActive}
@@ -427,16 +459,16 @@ export default class SearchList extends Component {
             shouldRasterizeIOS
             renderToHardwareTextureAndroid
             style={[styles.listContainer, this.props.listContainerStyle]}>
-            {this._renderSearchBody.bind(this)()}
+            {isSearching ? this.historySearch() : this._renderSearchBody.bind(this)()}
             {this._renderSectionIndex.bind(this)()}
           </View>
         </View>
 
-        {this.props.displayMask ? this._renderMask.bind(this)() : null}
-      </Animated.View>
+        {/* {this.props.displayMask ? this._renderMask.bind(this)() : null} */}
+      </View>
     );
   }
-
+  
   /**
    * render the main list view
    * @returns {*}
@@ -447,7 +479,7 @@ export default class SearchList extends Component {
     const { renderEmptyResult, renderEmpty, data } = this.props;
 
     if (isSearching && !isReady && renderEmptyResult && searchStr !== '') {
-      return renderEmptyResult(searchStr);
+      return this._renderEmptyResult();
     }
     if (data && data.length > 0 && isReady) {
       return (
@@ -475,9 +507,9 @@ export default class SearchList extends Component {
         />
       );
     }
-    if (renderEmpty) {
-      return renderEmpty();
-    }
+    // if (renderEmpty) {
+    //   return renderEmpty();
+    // }
   }
 
   /**
@@ -496,22 +528,21 @@ export default class SearchList extends Component {
    * @returns {XML}
    * @private
    */
-  _renderMask() {
-    const { isSearching, searchStr } = this.state;
-    if (isSearching && !searchStr) {
-      return (
-        <Touchable
-          onPress={this.cancelSearch}
-          underlayColor="rgba(0, 0, 0, 0.0)"
-          style={[
-            { top: this.props.toolbarHeight + Theme.size.searchInputHeight },
-            styles.maskStyle
-          ]}>
-          <Animated.View />
-        </Touchable>
-      );
-    }
-  }
+  // _renderMask() {
+  //   const { isSearching, searchStr } = this.state;
+  //   if (isSearching && !searchStr) {
+  //     return (
+  //       <TouchableOpacity
+  //         onPress={this.cancelSearch}
+  //         style={[
+  //           { top: this.props.toolbarHeight + Theme.size.searchInputHeight },
+  //           // styles.maskStyle
+  //         ]}>
+  //         {/* <Animated.View /> */}
+  //       </TouchableOpacity>
+  //     );
+  //   }
+  // }
 
   // /**
   //  * render back button on the Toolbar
@@ -639,7 +670,7 @@ const styles = StyleSheet.create({
   },
   rowSeparator: {
     backgroundColor: '#ffffff',
-    paddingLeft: 25
+    paddingLeft: 16
   },
   rowSeparatorHide: {
     opacity: 0.0
@@ -649,7 +680,10 @@ const styles = StyleSheet.create({
     height: Theme.size.sectionHeaderHeight,
     justifyContent: 'center',
     paddingLeft: 25,
-    backgroundColor: '#fafafa'
+    backgroundColor: '#fafafa',
+    borderColor: '#E0E0E0',
+    borderBottomWidth: 0.5,
+    borderTopWidth: 0.5
   },
   sectionTitle: {
     color: '#979797',
@@ -678,5 +712,12 @@ const styles = StyleSheet.create({
         marginVertical: 40
       }
     })
-  }
+  },
+  emptyDataSource: {
+    flex: 1,
+    alignItems: 'center',
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
+    marginTop: 50
+  },
 });

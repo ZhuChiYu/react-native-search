@@ -32,7 +32,7 @@ export default class SearchBar extends Component {
 
     onClickCancel: PropTypes.func, // the search cancel button clicked
     cancelTitle: PropTypes.string, // title for the search cancel button
-    cancelTextColor: PropTypes.string, // color for the search cancel button
+    cancelTextStyle: PropTypes.object, // color for the search cancel button
 
     searchInputBackgroundColor: PropTypes.string, // default state background color for the search input
     searchInputBackgroundColorActive: PropTypes.string, // active state background color for the search input
@@ -58,7 +58,6 @@ export default class SearchBar extends Component {
 
     searchBarBackgroundColor: '#171a23',
 
-    cancelTextColor: '#ffffff',
     cancelTitle: 'Cancel',
 
     showSearchIcon: true,
@@ -233,7 +232,7 @@ export default class SearchBar extends Component {
             placeholder={this.props.placeholder}
             returnKeyType="search"
           />
-          {this.state.showClearButton &&
+          {/* {this.state.showClearButton &&
           <TouchableOpacity
               activeOpacity={0.5}
               onPress={() => {
@@ -256,7 +255,7 @@ export default class SearchBar extends Component {
                   }}
               />
           </TouchableOpacity>
-          }
+          } */}
 
           <Animated.View pointerEvents="none" style={[styles.leftSearchIconStyle]}>
             {this.props.showSearchIcon ? (
@@ -281,7 +280,7 @@ export default class SearchBar extends Component {
    * @private
    */
   _renderDefaultCancel() {
-    const { cancelTitle, cancelTextColor } = this.props;
+    const { cancelTitle, cancelTextStyle } = this.props;
 
     return (
       <View
@@ -295,7 +294,7 @@ export default class SearchBar extends Component {
         }}
         shouldRasterizeIOS
         renderToHardwareTextureAndroid>
-        <Text style={{ color: cancelTextColor }} numberOfLines={1}>
+        <Text style={[{ color: '#000' }, cancelTextStyle]} numberOfLines={1}>
           {cancelTitle}
         </Text>
       </View>
