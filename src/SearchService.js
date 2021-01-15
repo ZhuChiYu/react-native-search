@@ -25,7 +25,7 @@ export default class SearchService {
     return tempResult;
   }
 
-  // FIXME 这个函数需要改造为一个字符串匹配多项
+  // 这个函数用来一个字符串匹配多项
   static generateMacherInto(source, item, inputLower, transStr, charIndexer) {
     const result = {};
     Object.assign(result, item);

@@ -23,6 +23,7 @@ import SectionIndex from './components/SectionIndex';
 import Theme from './components/Theme';
 import SearchService from './SearchService';
 import HighlightableText from './components/HighlightableText';
+import * as DataBase from './components/DataBase'
 
 export default class SearchList extends Component {
   static propTypes = {
@@ -86,6 +87,7 @@ export default class SearchList extends Component {
 
     displayMask: PropTypes.bool,
     searchOnDefaultValue: PropTypes.bool,
+    searchHistoryLimit: PropTypes.number,
 
     renderBackButton: PropTypes.func,
     renderRightButton: PropTypes.func,
@@ -112,19 +114,23 @@ export default class SearchList extends Component {
     toolbarBackgroundColor: Theme.color.primaryDark,
     searchBarContainerStyle: {},
     displayMask: true,
-    searchOnDefaultValue: false
+    searchOnDefaultValue: false,
+    searchHistoryLimit: 10,
   };
 
   constructor(props) {
     super(props);
     this.state = {
       isReady: false,
-      isSearching: false,
-      searchStr: '',
+      isSearching: false, // 判断搜索框中是否有值
+      isMatch: true, // 判断检索结果是否被匹配
+      searchStr: '',// 搜索文字
       originalListData: [],
       sectionListData: [],
       sectionIds: [],
-      animatedValue: new Animated.Value(0)
+      animatedValue: new Animated.Value(0),
+      searchHistory: [], // 搜索历史数组
+      isShowHistory: false
     };
 
     this.search = this.search.bind(this);
@@ -173,13 +179,15 @@ export default class SearchList extends Component {
     const { originalListData } = this.state;
 
     if (input) {
+      this.setState({ isShowHistory: false})
       input = sTrim(input);
       const tempResult = SearchService.search(originalListData, input.toLowerCase());
-
       if (tempResult.length === 0) {
         this.setState({
           isSearching: true,
-          sectionListData: Array.from(this.state.sectionListData)
+
+          isMatch: false,
+          sectionListData: Array.from(this.state.sectionListData) //将其他对象转换成数组
         });
       } else {
         const { searchResultData } = SearchService.sortResultList(
@@ -188,6 +196,7 @@ export default class SearchList extends Component {
         );
         this.setState({
           isSearching: false,
+          isMatch: true,
           sectionListData: searchResultData
         });
       }
@@ -323,6 +332,7 @@ export default class SearchList extends Component {
     );
   }
 
+  //此时为进入搜索状态，返回检索记录
   enterSearchState() {
     this.setState({ isSearching: true });
     // Animated.timing(this.state.animatedValue, {
@@ -342,28 +352,97 @@ export default class SearchList extends Component {
     //   this.setState({ isSearching: false });
     // });
     this.search('');
-    this.setState({ isSearching: false });
+    // this.setState({ isSearching: false })
+    this.setState({ isSearching: false, isMatch: true });
   }
 
   onFocus() {
+    this.getHistory();
     if (!this.state.isSearching) {
       this.enterSearchState();
+      this.setState({isShowHistory: true})
     }
-    // this.props.onSearchStart && this.props.onSearchStart();
-   
   }
 
-  historySearch() {
+  //获取历史记录
+  getHistory() {
+    // 查询本地历史记录
+    DataBase.getData("storeHistory").then(data => {
+        if (data == null) {
+            this.setState({
+                searchHistory: [],
+            })
+        } else {
+            this.setState({
+                searchHistory: data,
+            })
+        }
+    })
+  }
+
+  // // 保存搜索记录
+  // insertSearch(text) {
+  //   if (this.state.searchHistory.indexOf(text) != -1) {
+  //       // 本地历史 已有 搜索内容
+  //       let index = this.state.searchHistory.indexOf(text);
+  //       let tempArr = DataBase.arrDelete(this.state.searchHistory, index)
+  //       tempArr.unshift(text);
+  //       DataBase.addData("searchHistory", tempArr);
+  //   } else {
+  //       // 本地历史 无 搜索内容
+  //       let tempArr = this.state.searchHistory;
+  //       let historyLength = tempArr.length
+  //       //
+  //       if (historyLength < this.props.searchHistoryLimit) {
+  //         tempArr.unshift(text);
+  //         DataBase.addData("searchHistory", tempArr);
+  //       } else {
+  //         //若超过长度限制，则先删除列表最后一项，然后在头部插入value
+  //         let tempArr = DataBase.arrDelete(this.state.searchHistory, historyLength - 1)
+  //         tempArr.unshift(text);
+  //         DataBase.addData("searchHistory", tempArr);
+  //       }
+  //   }
+  // }
+
+  renderhistorySearch() {
+    return(
+      this.state.searchHistory.length > 0 ?
+      <View style={styles.searchMainLabel}>
+          {this.state.searchHistory.map((item, index) => {
+              return (
+                <TouchableOpacity
+                    activeOpacity={.8}
+                    style={styles.searchLabelBox}
+                    key={index}>
+                    <Text numberOfLines={1} style={styles.searchLabelText}>{item}</Text>
+                </TouchableOpacity>
+            )
+          })
+          }
+      </View>
+      : <View style={styles.noData}>
+          <Text style={styles.noDataTxt}>暂无搜索历史</Text>
+      </View>
+    )
+  }
+  renderNoMatch() {
     return(
       <View style={styles.emptySearchResult}>
-        <Text style={{color: '#979797', fontSize: 18, paddingTop: 20}}> 历史搜索</Text>
+        <Text style={{color: '#979797', fontSize: 18, paddingTop: 20}}> 无结果</Text>
       </View>
     )
   }
 
   onBlur() {
+    this.setState({isShowHistory: false})
     this.props.onSearchEnd && this.props.onSearchEnd();
   }
+
+  // onSubmitEditing() {
+  //   console.log()
+  //   this.insertSearch(this.state.searchStr);
+  // }
 
   onClickCancel() {
     this.exitSearchState();
@@ -402,7 +481,7 @@ export default class SearchList extends Component {
   }
 
   render() {
-    const {isSearching} = this.state
+    const {isSearching, isShowHistory, isMatch} = this.state
     return (
       <View
         ref="view"
@@ -459,7 +538,8 @@ export default class SearchList extends Component {
             shouldRasterizeIOS
             renderToHardwareTextureAndroid
             style={[styles.listContainer, this.props.listContainerStyle]}>
-            {isSearching ? this.historySearch() : this._renderSearchBody.bind(this)()}
+            {isShowHistory ? this.renderhistorySearch() :
+            (isMatch ?  this._renderSearchBody.bind(this)() : this.renderNoMatch())}
             {this._renderSectionIndex.bind(this)()}
           </View>
         </View>
@@ -507,9 +587,9 @@ export default class SearchList extends Component {
         />
       );
     }
-    // if (renderEmpty) {
-    //   return renderEmpty();
-    // }
+    if (renderEmpty) {
+      return renderEmpty();
+    }
   }
 
   /**
@@ -719,5 +799,41 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     justifyContent: 'flex-start',
     marginTop: 50
+  },
+  searchMain: {
+    paddingLeft: 16,
+    paddingRight: 16
+  },
+  searchMainLabel: {
+    flexDirection: "row",
+    flexWrap: 'wrap',
+    maxHeight: 210,
+    overflow: 'hidden',
+  },
+  searchLabelBox: {
+      borderRadius: 4,
+      backgroundColor: '#f2f2f2',
+      marginRight: 10,
+      marginTop: 10,
+      height: 32,
+      justifyContent: 'center',
+  },
+  searchLabelText: {
+      fontSize: 15,
+      color: '#000',
+      paddingLeft: 18,
+      paddingRight: 18,
+  },
+  noData: {
+    height: 55,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16
+  },
+  noDataTxt: {
+      fontSize: 15,
+      color: '#000',
+      lineHeight: 21
   },
 });

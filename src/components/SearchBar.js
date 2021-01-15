@@ -12,6 +12,7 @@ import React, { Component } from 'react';
 
 import PropTypes from 'prop-types';
 import Theme from './Theme';
+import * as DataBase from './DataBase'
 
 const { cancelButtonWidth: buttonWidth, searchBarHorizontalPadding, searchIconWidth } = Theme.size;
 
@@ -73,6 +74,7 @@ export default class SearchBar extends Component {
       isSearching: props.defaultValue !== '',
       animatedValue: new Animated.Value(0),
       showClearButton: this._needToShowClearButton(this.currentValue, false),
+      searchHistory: [], // 搜索历史数组
     };
 
     this.onFocus = this.onFocus.bind(this);
@@ -140,8 +142,10 @@ export default class SearchBar extends Component {
   onSubmitEditing() {
     if (this.state.value === '') {
       this.cancelSearch();
+    } else {
+      this.insertSearch(this.state.value)
+      this.getHistory()
     }
-
     this.props.onSubmitEditing && this.props.onSubmitEditing();
   }
 
@@ -165,11 +169,54 @@ export default class SearchBar extends Component {
   }
 
   cancelSearch() {
+    console.log("searchHistory!!!",this.state.searchHistory)
     this.refs.input.clear();
     this.refs.input.blur();
     this.setState({ value: '', isSearching: false });
     this.searchingAnimation(false);
     this.props.onClickCancel && this.props.onClickCancel();
+
+  }
+
+  //获取历史记录
+  getHistory() {
+    // 查询本地历史记录
+    DataBase.getData("storeHistory").then(data => {
+        if (data == null) {
+            this.setState({
+                searchHistory: [],
+            })
+        } else {
+            this.setState({
+                searchHistory: data,
+            })
+        }
+    })
+  }
+
+  // 保存搜索记录
+  insertSearch(text) {
+    if (this.state.searchHistory.indexOf(text) != -1) {
+        // 本地历史 已有 搜索内容
+        let index = this.state.searchHistory.indexOf(text);
+        let tempArr = DataBase.arrDelete(this.state.searchHistory, index)
+        tempArr.unshift(text);
+        DataBase.addData(tempArr);
+    } else {
+        // 本地历史 无 搜索内容
+        let tempArr = this.state.searchHistory;
+        let historyLength = tempArr.length
+        //
+        if (historyLength < 10) {
+          tempArr.unshift(text);
+          DataBase.addData(tempArr);
+        } else {
+          //若超过长度限制，则先删除列表最后一项，然后在头部插入value
+          let tempArr = DataBase.arrDelete(this.state.searchHistory, historyLength - 1)
+          tempArr.unshift(text);
+          DataBase.addData(tempArr);
+        }
+    }
   }
 
   render() {
@@ -230,7 +277,7 @@ export default class SearchBar extends Component {
             value={this.state.value}
             underlineColorAndroid="transparent"
             placeholder={this.props.placeholder}
-            returnKeyType="search"
+            returnKeyType="search"// 键盘确定按钮类型
           />
           {/* {this.state.showClearButton &&
           <TouchableOpacity
@@ -359,5 +406,37 @@ const styles = StyleSheet.create({
   searchIconStyle: {
     width: 12,
     height: 12
-  }
+  },
+  searchMainLabel: {
+    flexDirection: "row",
+    flexWrap: 'wrap',
+    maxHeight: 210,
+    overflow: 'hidden',
+  },
+  searchLabelBox: {
+      borderRadius: 4,
+      backgroundColor: '#f2f2f2',
+      marginRight: 10,
+      marginTop: 10,
+      height: 32,
+      justifyContent: 'center',
+  },
+  searchLabelText: {
+      fontSize: 15,
+      color: '#000',
+      paddingLeft: 18,
+      paddingRight: 18,
+  },
+  noData: {
+    height: 55,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16
+  },
+  noDataTxt: {
+      fontSize: 15,
+      color: '#000',
+      lineHeight: 21
+  },
 });
