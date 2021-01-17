@@ -69,12 +69,18 @@ export default class SearchBar extends Component {
 
   constructor(props) {
     super(props);
+    if (this.props.value !== undefined) {
+        this.currentValue = this.props.value;
+    } else {
+        this.currentValue = '';
+    }
     this.state = {
       value: props.defaultValue,
       isSearching: props.defaultValue !== '',
       animatedValue: new Animated.Value(0),
       showClearButton: this._needToShowClearButton(this.currentValue, false),
       searchHistory: [], // 搜索历史数组
+      focused: false
     };
 
     this.onFocus = this.onFocus.bind(this);
@@ -131,11 +137,18 @@ export default class SearchBar extends Component {
   }
 
   onBlur() {
+    this.setState({
+      focused: false
+    })
     this.props.onBlur && this.props.onBlur();
   }
 
   onFocus() {
-    this.searchingAnimation(true);
+    // this.searchingAnimation(true);
+    this.setState({
+      isSearching: true,
+      focused: true
+    })
     this.props.onFocus && this.props.onFocus();
   }
 
@@ -167,6 +180,29 @@ export default class SearchBar extends Component {
       this.setState({ isSearching });
     });
   }
+
+  setText(text: ?string, updateUI: boolean = true) {
+    let newText = '';
+    if (text != null) {
+        if (typeof text == 'string') {
+            newText = text;
+        } else {
+            newText = text.toString();
+        }
+    }
+    if (updateUI) {
+        this.setState({value: newText});
+    } else {
+        this.state.value = newText;
+    }
+  }
+
+  _clearText = () => {
+    this.setText('');
+    if (this.props.onChangeText) {
+        this.props.onChangeText('');
+    }
+  };
 
   cancelSearch() {
     console.log("searchHistory!!!",this.state.searchHistory)
@@ -279,6 +315,8 @@ export default class SearchBar extends Component {
             placeholder={this.props.placeholder}
             returnKeyType="search"// 键盘确定按钮类型
           />
+          
+          
           {/* {this.state.showClearButton &&
           <TouchableOpacity
               activeOpacity={0.5}
@@ -308,7 +346,15 @@ export default class SearchBar extends Component {
             {this.props.showSearchIcon ? (
               <Image style={styles.searchIconStyle} source={require('../images/icon-search.png')} />
             ) : null}
+            
           </Animated.View>
+          {this.state.focused && this.state.value != null && this.state.value.length > 0 && (
+            <TouchableOpacity onPress={this._clearText}
+              style={styles.rightCancelIconStyle}>
+                <Image style={styles.cancelIconStyle} source={require('../images/textclear_nor.png')}/>
+            </TouchableOpacity>
+          )}
+
         </Animated.View>
         <View style={[styles.cancelContainer, this.props.cancelContainerStyle]}>
           <TouchableWithoutFeedback onPress={this.cancelSearch}>
@@ -403,40 +449,23 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: searchIconWidth
   },
+  rightCancelIconStyle: {
+    position: 'absolute',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 1,
+    top: 0,
+    bottom: 0,
+    right:4,
+    width: searchIconWidth
+  },
   searchIconStyle: {
     width: 12,
     height: 12
   },
-  searchMainLabel: {
-    flexDirection: "row",
-    flexWrap: 'wrap',
-    maxHeight: 210,
-    overflow: 'hidden',
-  },
-  searchLabelBox: {
-      borderRadius: 4,
-      backgroundColor: '#f2f2f2',
-      marginRight: 10,
-      marginTop: 10,
-      height: 32,
-      justifyContent: 'center',
-  },
-  searchLabelText: {
-      fontSize: 15,
-      color: '#000',
-      paddingLeft: 18,
-      paddingRight: 18,
-  },
-  noData: {
-    height: 55,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16
-  },
-  noDataTxt: {
-      fontSize: 15,
-      color: '#000',
-      lineHeight: 21
+  cancelIconStyle: {
+    width: 24,
+    height: 24
   },
 });

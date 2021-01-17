@@ -122,7 +122,7 @@ export default class SearchList extends Component {
     super(props);
     this.state = {
       isReady: false,
-      isSearching: false, // 判断搜索框中是否有值
+      isSearching: false, // 判断搜索框中是否有值，是否处在搜索状态
       isMatch: true, // 判断检索结果是否被匹配
       searchStr: '',// 搜索文字
       originalListData: [],
@@ -412,6 +412,7 @@ export default class SearchList extends Component {
           {this.state.searchHistory.map((item, index) => {
               return (
                 <TouchableOpacity
+                    onPress = {() => {}}
                     activeOpacity={.8}
                     style={styles.searchLabelBox}
                     key={index}>
