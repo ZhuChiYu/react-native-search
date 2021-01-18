@@ -385,6 +385,7 @@ export default class SearchList extends Component {
                 searchHistory: [],
               })
               DataBase.delData("storeHistory");
+              console.log("storeHistory!!!", DataBase.getData('storeHistory'))
             }, style: 'destructive'},
         ],
     );

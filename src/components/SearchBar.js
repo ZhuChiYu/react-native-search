@@ -66,7 +66,7 @@ export default class SearchBar extends Component {
   };
 
   currentValue: string;
-
+  arrDelete
   constructor(props) {
     super(props);
     if (this.props.value !== undefined) {
@@ -118,7 +118,7 @@ export default class SearchBar extends Component {
       this.cancelSearch();
     } else {
       this.insertSearch(this.state.value)
-      this.getHistory()
+      // this.getHistory()
     }
     this.props.onSubmitEditing && this.props.onSubmitEditing();
   }
@@ -200,7 +200,7 @@ export default class SearchBar extends Component {
         let index = this.state.searchHistory.indexOf(text);
         let tempArr = DataBase.arrDelete(this.state.searchHistory, index)
         tempArr.unshift(text);
-        DataBase.addData(tempArr);
+        DataBase.addData('storeHistory', tempArr);
     } else {
         // 本地历史 无 搜索内容
         let tempArr = this.state.searchHistory;
@@ -208,12 +208,12 @@ export default class SearchBar extends Component {
         //
         if (historyLength < 10) {
           tempArr.unshift(text);
-          DataBase.addData(tempArr);
+          DataBase.addData('storeHistory', tempArr);
         } else {
           //若超过长度限制，则先删除列表最后一项，然后在头部插入value
           let tempArr = DataBase.arrDelete(this.state.searchHistory, historyLength - 1)
           tempArr.unshift(text);
-          DataBase.addData(tempArr);
+          DataBase.addData('storeHistory', tempArr);
         }
     }
   }
