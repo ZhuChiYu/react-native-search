@@ -78,7 +78,6 @@ export default class SearchBar extends Component {
       value: props.defaultValue,
       isSearching: props.defaultValue !== '',
       animatedValue: new Animated.Value(0),
-      showClearButton: this._needToShowClearButton(this.currentValue, false),
       searchHistory: [], // 搜索历史数组
       focused: false
     };
@@ -88,65 +87,27 @@ export default class SearchBar extends Component {
     this.onSubmitEditing = this.onSubmitEditing.bind(this);
     this.onChange = this.onChange.bind(this);
     this.cancelSearch = this.cancelSearch.bind(this);
-  }
-  _needToShowClearButton(text: string, editing: boolean): boolean {
-    if (text === undefined || text === '') {
-        // if change to empty, hide the button
-        return false;
-    } else {
-        // value is not empty
-        if (editing) {
-            // in editing, always and while-editing should show
-            if (this.props.clearButtonMode === 'always' ||
-                this.props.clearButtonMode === 'while-editing') {
-                return true;
-            }
-        } else {
-            // not in editing, always and unless-editing should show
-            if (this.props.clearButtonMode === 'always' ||
-                this.props.clearButtonMode === 'unless-editing') {
-                return true;
-            }
-        }
-    }
-    return false;
-  }
-
-  _handleTextChanged(text: string, editing: boolean) {
-    let show = this._needToShowClearButton(text, editing);
-    // if current state is not the same with the calculated one, refresh
-    if (show !== this.state.showClearButton) {
-        this.setState({showClearButton: show});
-    }
-  }
-
-  _clearText() {
-    let textInput: TextInput = this.refs.input;
-    // clear the value
-    this.currentValue = '';
-    textInput.clear();
-    // handle clear button
-    this._handleTextChanged(this.currentValue, textInput.isFocused());
+    this.onClickHistoryItem = this.onClickHistoryItem.bind(this)
   }
 
   onChange(value) {
-    this.currentValue = value;
-    this._handleTextChanged(value, true);
+    // this.currentValue = value;
+    // // this._handleTextChanged(value, true);
     this.props.onChange && this.props.onChange(value);
     this.setState({ value });
   }
 
   onBlur() {
     this.setState({
+      isSearching: false,
       focused: false
     })
     this.props.onBlur && this.props.onBlur();
   }
 
   onFocus() {
-    // this.searchingAnimation(true);
+    this.searchingAnimation(true);
     this.setState({
-      isSearching: true,
       focused: true
     })
     this.props.onFocus && this.props.onFocus();
@@ -197,15 +158,13 @@ export default class SearchBar extends Component {
     }
   }
 
-  _clearText = () => {
+  clearText = () => {
     this.setText('');
-    if (this.props.onChangeText) {
-        this.props.onChangeText('');
-    }
+    this.setState({isSearching: false, focused: true});
+    this.props.clearText && this.props.clearText();
   };
 
   cancelSearch() {
-    console.log("searchHistory!!!",this.state.searchHistory)
     this.refs.input.clear();
     this.refs.input.blur();
     this.setState({ value: '', isSearching: false });
@@ -214,10 +173,14 @@ export default class SearchBar extends Component {
 
   }
 
+  onClickHistoryItem(item) {
+    this.setState({ value: item});
+  }
+
   //获取历史记录
   getHistory() {
     // 查询本地历史记录
-    DataBase.getData("storeHistory").then(data => {
+    DataBase.getData('storeHistory').then(data => {
         if (data == null) {
             this.setState({
                 searchHistory: [],
@@ -315,41 +278,16 @@ export default class SearchBar extends Component {
             placeholder={this.props.placeholder}
             returnKeyType="search"// 键盘确定按钮类型
           />
-          
-          
-          {/* {this.state.showClearButton &&
-          <TouchableOpacity
-              activeOpacity={0.5}
-              onPress={() => {
-                  // clear text
-                  this._clearText();
-                  // trigger a onChangeTest
-                  onChangeText && onChangeText(this.currentValue);
-                  // focus if it's not focused
-                  if (!this.refs.input.isFocused()) {
-                      this.refs.input.focus();
-                  }
-              }}
-          >
-              <Image
-                  source={require('../images/textclear_nor.png')}
-                  style={{
-                      marginLeft: 8,
-                      height: 24,
-                      width: 24,
-                  }}
-              />
-          </TouchableOpacity>
-          } */}
 
           <Animated.View pointerEvents="none" style={[styles.leftSearchIconStyle]}>
-            {this.props.showSearchIcon ? (
-              <Image style={styles.searchIconStyle} source={require('../images/icon-search.png')} />
-            ) : null}
-            
+            {this.props.showSearchIcon ?
+            (this.state.focused ?
+            <Image style={styles.searchIconStyle} source={require('../Tools/search_Light_nor.png')} /> :
+            <Image style={styles.searchIconStyle} source={require('../Tools/search_light_prs.png')} />
+            ): null}
           </Animated.View>
           {this.state.focused && this.state.value != null && this.state.value.length > 0 && (
-            <TouchableOpacity onPress={this._clearText}
+            <TouchableOpacity onPress={this.clearText}
               style={styles.rightCancelIconStyle}>
                 <Image style={styles.cancelIconStyle} source={require('../images/textclear_nor.png')}/>
             </TouchableOpacity>
@@ -461,8 +399,8 @@ const styles = StyleSheet.create({
     width: searchIconWidth
   },
   searchIconStyle: {
-    width: 12,
-    height: 12
+    width: 24,
+    height: 24
   },
   cancelIconStyle: {
     width: 24,

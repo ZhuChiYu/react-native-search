@@ -7,7 +7,8 @@ import {
   Image,
   Platform,
   SectionList,
-  TouchableOpacity
+  TouchableOpacity,
+  Alert
 } from 'react-native';
 
 import React, { Component } from 'react';
@@ -61,6 +62,9 @@ export default class SearchList extends Component {
     title: PropTypes.string,
     titleTextColor: PropTypes.string,
 
+    // 清空按钮回调函数
+    clearText: PropTypes.func,
+
     cancelTitle: PropTypes.string,
     cancelTextColor: PropTypes.string,
 
@@ -85,7 +89,6 @@ export default class SearchList extends Component {
     searchBarStyle: PropTypes.object,
     searchBarContainerStyle: PropTypes.object,
 
-    displayMask: PropTypes.bool,
     searchOnDefaultValue: PropTypes.bool,
     searchHistoryLimit: PropTypes.number,
 
@@ -98,9 +101,8 @@ export default class SearchList extends Component {
     renderHeader: PropTypes.func,
     renderFooter: PropTypes.func,
     renderStickyHeader: PropTypes.func,
-    renderRow: PropTypes.func.isRequired,
+    renderRow: PropTypes.func,
 
-    onSearchStart: PropTypes.func,
     onSearchEnd: PropTypes.func
   };
 
@@ -113,7 +115,6 @@ export default class SearchList extends Component {
     searchListBackgroundColor: Theme.color.primaryDark,
     toolbarBackgroundColor: Theme.color.primaryDark,
     searchBarContainerStyle: {},
-    displayMask: true,
     searchOnDefaultValue: false,
     searchHistoryLimit: 10,
   };
@@ -123,22 +124,26 @@ export default class SearchList extends Component {
     this.state = {
       isReady: false,
       isSearching: false, // 判断搜索框中是否有值，是否处在搜索状态
-      isMatch: true, // 判断检索结果是否被匹配
       searchStr: '',// 搜索文字
       originalListData: [],
       sectionListData: [],
       sectionIds: [],
       animatedValue: new Animated.Value(0),
       searchHistory: [], // 搜索历史数组
-      isShowHistory: false
+      isShowHistory: false,
+      selectedHistoryItem: '',
+      isShowSectionHeader: true,
+      hasData: false
     };
 
     this.search = this.search.bind(this);
     this.cancelSearch = this.cancelSearch.bind(this);
+    this.clearText = this.clearText.bind(this);
     this.onFocus = this.onFocus.bind(this);
     this.onBlur = this.onBlur.bind(this);
     this.onClickCancel = this.onClickCancel.bind(this);
     this.scrollToSection = this.scrollToSection.bind(this);
+    this.onClickHistoryItem = this.onClickHistoryItem.bind(this)
 
     pinyin.setOptions({ checkPolyphone: false, charCase: 2 });
   }
@@ -185,8 +190,7 @@ export default class SearchList extends Component {
       if (tempResult.length === 0) {
         this.setState({
           isSearching: true,
-
-          isMatch: false,
+          isReady: false,
           sectionListData: Array.from(this.state.sectionListData) //将其他对象转换成数组
         });
       } else {
@@ -196,11 +200,13 @@ export default class SearchList extends Component {
         );
         this.setState({
           isSearching: false,
-          isMatch: true,
-          sectionListData: searchResultData
+          isReady: true,
+          sectionListData: searchResultData,
+          isShowSectionHeader: false
         });
       }
     } else {
+      this.setState({isShowSectionHeader: true})
       this.parseInitList(originalListData);
     }
   }
@@ -311,15 +317,16 @@ export default class SearchList extends Component {
    * @private
    */
   _renderRow({ index, item, section }) {
+    const {isShowSectionHeader} = this.state
     return (
       <View
-        style={{
+        style={[{
           flex: 1,
           marginLeft: 20,
           height: this.props.rowHeight,
           justifyContent: 'center',
-          height: 56
-        }}>
+          height: 56,
+        },!isShowSectionHeader ? styles.rowBorder : '']}>
         
         <HighlightableText
           text={item.searchStr}
@@ -334,26 +341,12 @@ export default class SearchList extends Component {
 
   //此时为进入搜索状态，返回检索记录
   enterSearchState() {
-    this.setState({ isSearching: true });
-    // Animated.timing(this.state.animatedValue, {
-    //   duration: this.props.searchBarToggleDuration || Theme.duration.toggleSearchBar,
-    //   toValue: 1,
-    //   useNativeDriver: true
-    // }).start(() => {});
+    this.setState({ isSearching: true, isShowSectionHeader: false });
   }
 
   exitSearchState() {
-    // Animated.timing(this.state.animatedValue, {
-    //   duration: this.props.searchBarToggleDuration || Theme.duration.toggleSearchBar,
-    //   toValue: 0,
-    //   useNativeDriver: true
-    // }).start(() => {
-    //   this.search('');
-    //   this.setState({ isSearching: false });
-    // });
     this.search('');
-    // this.setState({ isSearching: false })
-    this.setState({ isSearching: false, isMatch: true });
+    this.setState({ isSearching: false, isReady: true, isShowSectionHeader: true });
   }
 
   onFocus() {
@@ -367,7 +360,7 @@ export default class SearchList extends Component {
   //获取历史记录
   getHistory() {
     // 查询本地历史记录
-    DataBase.getData("storeHistory").then(data => {
+    DataBase.getData('storeHistory').then(data => {
         if (data == null) {
             this.setState({
                 searchHistory: [],
@@ -380,64 +373,81 @@ export default class SearchList extends Component {
     })
   }
 
-  // // 保存搜索记录
-  // insertSearch(text) {
-  //   if (this.state.searchHistory.indexOf(text) != -1) {
-  //       // 本地历史 已有 搜索内容
-  //       let index = this.state.searchHistory.indexOf(text);
-  //       let tempArr = DataBase.arrDelete(this.state.searchHistory, index)
-  //       tempArr.unshift(text);
-  //       DataBase.addData("searchHistory", tempArr);
-  //   } else {
-  //       // 本地历史 无 搜索内容
-  //       let tempArr = this.state.searchHistory;
-  //       let historyLength = tempArr.length
-  //       //
-  //       if (historyLength < this.props.searchHistoryLimit) {
-  //         tempArr.unshift(text);
-  //         DataBase.addData("searchHistory", tempArr);
-  //       } else {
-  //         //若超过长度限制，则先删除列表最后一项，然后在头部插入value
-  //         let tempArr = DataBase.arrDelete(this.state.searchHistory, historyLength - 1)
-  //         tempArr.unshift(text);
-  //         DataBase.addData("searchHistory", tempArr);
-  //       }
-  //   }
-  // }
+  onPressDelete = () => {
+    const deleteTip = this.props.deleteTip;
+    Alert.alert(
+        '',
+        deleteTip || '确定要删除历史记录？',
+        [
+            {text: '取消', onPress: () => console.log('Cancel Pressed'), style: 'cancel'},
+            {text: '确定', onPress: () => {
+              this.setState({
+                searchHistory: [],
+              })
+              DataBase.delData("storeHistory");
+            }, style: 'destructive'},
+        ],
+    );
+};
 
-  renderhistorySearch() {
+  renderHistorySearch() {
     return(
-      this.state.searchHistory.length > 0 ?
-      <View style={styles.searchMainLabel}>
-          {this.state.searchHistory.map((item, index) => {
-              return (
-                <TouchableOpacity
-                    onPress = {() => {}}
-                    activeOpacity={.8}
-                    style={styles.searchLabelBox}
-                    key={index}>
-                    <Text numberOfLines={1} style={styles.searchLabelText}>{item}</Text>
-                </TouchableOpacity>
-            )
-          })
-          }
-      </View>
-      : <View style={styles.noData}>
-          <Text style={styles.noDataTxt}>暂无搜索历史</Text>
+      <View style={styles.searchMain}>
+        { this.state.searchHistory.length > 0 ?
+        <View>
+          <View style={styles.searchMake}>
+              <Text style={styles.searchMainTits}>历史搜索</Text>
+              {/* 删除本地搜索历史按钮 */}
+              <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                      // 判断是否有本地搜索历史
+                      if (this.state.searchHistory.length > 0) {
+                          this.onPressDelete()
+                      }
+                  }}
+              >
+                  <Image style={styles.deleteIconStyle} source={require('./Tools/delete_dis.png')} />
+              </TouchableOpacity>
+          </View>
+          <View style={styles.searchMainLabel}>
+              {this.state.searchHistory.map((item, index) => {
+                  return (
+                    <TouchableOpacity
+                        onPress = {() => {
+                          this.onClickHistoryItem(item)
+                          this.search(item)}}
+                        activeOpacity={.8}
+                        style={styles.searchLabelBox}
+                        key={index}>
+                        <Text numberOfLines={1} style={styles.searchLabelText}>{item}</Text>
+                    </TouchableOpacity>
+                )
+              })
+              }
+          </View>
+        </View> :
+        <View style={styles.noData}>
+            <Text style={styles.noDataTxt}>暂无搜索历史</Text>
+        </View>
+      }
       </View>
     )
   }
+
   renderNoMatch() {
     return(
-      <View style={styles.emptySearchResult}>
-        <Text style={{color: '#979797', fontSize: 18, paddingTop: 20}}> 无结果</Text>
+      <View style={styles.noResult}>
+        <View style={styles.noResultImageContainer}>
+          <Image style={styles.noResultImage}source={require('./Tools/search_light_prs.png')} />
+        </View>
+        <Text style={styles.noResultTxt}>无结果</Text>
       </View>
     )
   }
 
   onBlur() {
     this.setState({isShowHistory: false})
-    this.props.onSearchEnd && this.props.onSearchEnd();
   }
 
   // onSubmitEditing() {
@@ -454,15 +464,16 @@ export default class SearchList extends Component {
     this.refs.searchBar && this.refs.searchBar.cancelSearch && this.refs.searchBar.cancelSearch();
   }
 
-  onSearchStart() {
-    console.log("asdfasdfasdf")
-    return (
-      <View style={styles.emptySearchResult}>
-        <Text style={{color: '#979797', fontSize: 18, paddingTop: 20}}> No Result For <Text
-          style={{color: '#171a23', fontSize: 18}}>dasdasd</Text></Text>
-        <Text style={{color: '#979797', fontSize: 18, alignItems: 'center', paddingTop: 10}}>Please search again</Text>
-      </View>
-    )
+  onClickHistoryItem(item) {
+    this.refs.searchBar && this.refs.searchBar.onClickHistoryItem && this.refs.searchBar.onClickHistoryItem(item);
+  }
+
+  clearText() {
+    this.setState({
+      isShowHistory: true,
+      isSearching: true,
+      searchStr: ''
+    })
   }
 
   scrollToSection(sectionIndex) {
@@ -482,7 +493,7 @@ export default class SearchList extends Component {
   }
 
   render() {
-    const {isSearching, isShowHistory, isMatch} = this.state
+    const {isSearching, isShowHistory, isReady} = this.state
     return (
       <View
         ref="view"
@@ -503,18 +514,16 @@ export default class SearchList extends Component {
           ]}>
           {/* {this._renderToolbar()} */}
 
-          <View style={this.props.searchBarContainerStyle}>
+          <View style={[styles.searchBarContainerStyle,this.props.searchBarContainerStyle]}>
             <SearchBar
               placeholder={
                 this.props.searchInputPlaceholder ? this.props.searchInputPlaceholder : ''
-              }
-              defaultValue={
-                this.props.searchInputDefaultValue ? this.props.searchInputDefaultValue : ''
               }
               onChange={this.search}
               onFocus={this.onFocus}
               onBlur={this.onBlur}
               onClickCancel={this.onClickCancel}
+              clearText={this.clearText}
               cancelTitle={this.props.cancelTitle}
               cancelTextStyle={this.props.cancelTextStyle}
               searchBarBackgroundColor={this.props.searchBarBackgroundColor}
@@ -533,19 +542,15 @@ export default class SearchList extends Component {
               ref="searchBar"
             />
           </View>
-          {this._renderStickyHeader()}
-
           <View
             shouldRasterizeIOS
             renderToHardwareTextureAndroid
             style={[styles.listContainer, this.props.listContainerStyle]}>
-            {isShowHistory ? this.renderhistorySearch() :
-            (isMatch ?  this._renderSearchBody.bind(this)() : this.renderNoMatch())}
+            {isShowHistory ? this.renderHistorySearch() :
+            (isReady ?  this._renderSearchBody.bind(this)() : this.renderNoMatch())}
             {this._renderSectionIndex.bind(this)()}
           </View>
         </View>
-
-        {/* {this.props.displayMask ? this._renderMask.bind(this)() : null} */}
       </View>
     );
   }
@@ -577,10 +582,11 @@ export default class SearchList extends Component {
           showsVerticalScrollIndicator
           renderItem={this.props.renderRow || this._renderRow.bind(this)}
           ItemSeparatorComponent={
-            this.props.renderItemSeparator || this._renderItemSeparator.bind(this)
+            this.state.isShowSectionHeader &&
+            (this.props.renderItemSeparator || this._renderItemSeparator.bind(this))
           }
           renderSectionHeader={
-            this.props.renderSectionHeader || this._renderSectionHeader.bind(this)
+            this.state.isShowSectionHeader && (this.props.renderSectionHeader || this._renderSectionHeader.bind(this))
           }
           ListFooterComponent={this.props.renderFooter || this._renderFooter.bind(this)}
           ListHeaderComponent={this.props.renderHeader || this._renderHeader.bind(this)}
@@ -594,104 +600,6 @@ export default class SearchList extends Component {
   }
 
   /**
-   * render a custom sticky header, isSearching is pass to renderStickyHeader
-   * @returns {*}
-   * @private
-   */
-  _renderStickyHeader() {
-    const { renderStickyHeader } = this.props;
-    const { isSearching } = this.state;
-    return renderStickyHeader ? renderStickyHeader(isSearching) : null;
-  }
-
-  /**
-   * render the modal mask when searching
-   * @returns {XML}
-   * @private
-   */
-  // _renderMask() {
-  //   const { isSearching, searchStr } = this.state;
-  //   if (isSearching && !searchStr) {
-  //     return (
-  //       <TouchableOpacity
-  //         onPress={this.cancelSearch}
-  //         style={[
-  //           { top: this.props.toolbarHeight + Theme.size.searchInputHeight },
-  //           // styles.maskStyle
-  //         ]}>
-  //         {/* <Animated.View /> */}
-  //       </TouchableOpacity>
-  //     );
-  //   }
-  // }
-
-  // /**
-  //  * render back button on the Toolbar
-  //  * @returns {XML}
-  //  * @private
-  //  */
-  // _renderBackButton() {
-  //   return (
-  //     <Touchable onPress={this.props.onPress}>
-  //       <Image
-  //         hitSlop={{ top: 10, left: 20, bottom: 10, right: 20 }}
-  //         style={[
-  //           {
-  //             width: 20,
-  //             height: 20,
-  //             paddingLeft: 15,
-  //             paddingRight: 15
-  //           }
-  //         ]}
-  //         source={require('./images/icon-back.png')}
-  //       />
-  //     </Touchable>
-  //   );
-  // }
-
-  // /**
-  //  * render Toolbar
-  //  * @returns {XML}
-  //  * @private
-  //  */
-  // _renderToolbar() {
-  //   const {
-  //     title,
-  //     titleTextColor,
-  //     renderBackButton,
-  //     renderRightButton,
-  //     renderToolbar,
-  //     toolbarHeight,
-  //     toolbarBackgroundColor,
-  //     statusBarHeight
-  //   } = this.props;
-  //   const { animatedValue } = this.state;
-
-  //   return renderToolbar ? (
-  //     renderToolbar()
-  //   ) : (
-  //     <Toolbar
-  //       animatedValue={animatedValue}
-  //       style={[
-  //         {
-  //           opacity: animatedValue.interpolate({
-  //             inputRange: [0, 1],
-  //             outputRange: [1, 0]
-  //           }),
-  //           backgroundColor: toolbarBackgroundColor,
-  //           height: toolbarHeight,
-  //           paddingTop: statusBarHeight
-  //         }
-  //       ]}
-  //       title={title}
-  //       textColor={titleTextColor}
-  //       renderBackButton={renderBackButton || this._renderBackButton.bind(this)}
-  //       renderRightButton={renderRightButton}
-  //     />
-  //   );
-  // }
-
-  /**
    * render the alphabetical index
    * @returns {*}
    * @private
@@ -703,13 +611,13 @@ export default class SearchList extends Component {
       sectionIndexContainerStyle,
       renderSectionIndexItem
     } = this.props;
-    const { isSearching, sectionIds, animatedValue } = this.state;
+    const { isSearching, sectionIds, animatedValue, isShowSectionHeader } = this.state;
 
     if (isSearching) {
       return null;
     }
 
-    if (hideSectionList) {
+    if (!isShowSectionHeader) {
       return null;
     }
     return (
@@ -802,6 +710,7 @@ const styles = StyleSheet.create({
     marginTop: 50
   },
   searchMain: {
+    flex: 1,
     paddingLeft: 16,
     paddingRight: 16
   },
@@ -826,15 +735,69 @@ const styles = StyleSheet.create({
       paddingRight: 18,
   },
   noData: {
-    height: 55,
+    height: 24,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 16
+    marginTop: 133
   },
   noDataTxt: {
-      fontSize: 15,
+      opacity: 0.3,
+      fontFamily: 'PingFangSC-Regular',
+      fontSize: 16,
       color: '#000',
-      lineHeight: 21
+      textAlign: 'center',
+      lineHeight: 24
   },
+  noResult: {
+    height: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 133
+  },
+  noResultTxt: {
+    opacity: 0.3,
+    fontFamily: 'PingFangSC-Regular',
+    fontSize: 16,
+    color: '#000',
+    textAlign: 'center',
+    lineHeight: 24
+  },
+  noResultImage: {
+    width: 80,
+    height: 60
+  },
+  noResultImageContainer: {
+    width: 160,
+    height: 120,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  searchMake: {
+    height: 36,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomColor: '#E0E0E0',
+    borderBottomWidth: 0.5
+  },
+  searchMainTits: {
+    fontSize: 12,
+    color: '#000',
+    opacity: 0.6,
+    fontFamily: 'PingFangSC-Regular',
+    lineHeight: 18
+  },
+  rowBorder: {
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#E0E0E0"
+  },
+  searchBarContainerStyle: {
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#E0E0E0"
+  },
+  deleteIconStyle: {
+    width: 18,
+    height: 18
+  }
 });

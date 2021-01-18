@@ -83,14 +83,12 @@ export default class App extends Component {
   render () {
     return (
       <View style={styles.container}>
-        <StatusBar backgroundColor='#F00' barStyle='light-content' />
         <SearchList
           data={this.state.dataSource}
           // renderRow={this.renderRow.bind(this)}
           renderEmptyResult={this.renderEmptyResult.bind(this)}
           renderBackButton={() => null}
           renderEmpty={this.renderEmpty.bind(this)}
-          onSearchStart={this.onSearchStart.bind(this)}
 
           rowHeight={rowHeight}
 

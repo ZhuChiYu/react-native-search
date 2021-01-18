@@ -109,8 +109,6 @@ export default class HighlightableText extends Component {
         );
       }
     }
-    
-
     return <Text style={{ flexDirection: 'row' }}>{titleContents}</Text>;
   }
 }
