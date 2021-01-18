@@ -81,8 +81,6 @@ export default class SectionIndex extends Component {
           onMoveShouldSetResponder={returnTrue}
           onResponderGrant={this.detectAndScrollToSection}
           onResponderMove={(e) => {
-            // e 不更新 的问题
-            // https://github.com/facebook/react-native/pull/15123/commits/e22763f8c78d59d6ab04417690d25976671be6f0#diff-3f71f1808c93380dfbd5c044f9e6b4c7R122
             this.detectAndScrollToSection(e);
           }}
           onResponderRelease={this.resetSection}>

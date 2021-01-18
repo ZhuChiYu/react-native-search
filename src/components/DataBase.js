@@ -1,28 +1,28 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // 增加数据
-export const addData = async (value) => {
+export const addData = async (key, value) => {
     try {
         const jsonValue = JSON.stringify(value)
-        await AsyncStorage.setItem('storeHistory', jsonValue)
+        await AsyncStorage.setItem(key, jsonValue)
     } catch (e) {
     // saving error
     }
 }
 
 // 删除数据
-export const delData = async () => {
+export const delData = async (key) => {
     try {
-        await AsyncStorage.removeItem('storeHistory')
+        await AsyncStorage.removeItem(key)
     } catch(e) {
       // error delete value
     }
 }
 
 // 查询数据
-export const getData = async () => {
+export const getData = async (key) => {
     try {
-        const history = await AsyncStorage.getItem('storeHistory')
+        const history = await AsyncStorage.getItem(key)
         return history != null ? JSON.parse(history) : null;
     } catch(e) {
       // error reading value

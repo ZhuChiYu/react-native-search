@@ -8,7 +8,8 @@ import {
   Platform,
   SectionList,
   TouchableOpacity,
-  Alert
+  Alert,
+  Dimensions
 } from 'react-native';
 
 import React, { Component } from 'react';
@@ -18,8 +19,6 @@ import PropTypes from 'prop-types';
 import { sTrim } from './utils/utils';
 
 import SearchBar from './components/SearchBar';
-import Toolbar from './components/Toolbar';
-import Touchable from './utils/Touchable';
 import SectionIndex from './components/SectionIndex';
 import Theme from './components/Theme';
 import SearchService from './SearchService';
@@ -33,15 +32,10 @@ export default class SearchList extends Component {
     // 使用renderRow获取更大的自由度，自定义rowHeight,用于滚动计算，默认为40
     rowHeight: PropTypes.number.isRequired,
 
-    //是否隐藏section
-    hideSectionList: PropTypes.bool,
-
     //section头部的高度
     sectionHeaderHeight: PropTypes.number,
 
     searchListBackgroundColor: PropTypes.string,
-
-    toolbarBackgroundColor: PropTypes.string,
 
     searchBarToggleDuration: PropTypes.number,
     searchBarBackgroundColor: PropTypes.string,
@@ -78,9 +72,7 @@ export default class SearchList extends Component {
 
     onScrollToSection: PropTypes.func,
 
-    statusBarHeight: PropTypes.number,
     toolbarHeight: PropTypes.number,
-    renderToolbar: PropTypes.func,
     renderCancel: PropTypes.func,
     renderCancelWhileSearching: PropTypes.func,
     cancelContainerStyle: PropTypes.object,
@@ -98,25 +90,24 @@ export default class SearchList extends Component {
     renderEmptyResult: PropTypes.func,
     renderItemSeparator: PropTypes.func,
     renderSectionHeader: PropTypes.func,
-    renderHeader: PropTypes.func,
     renderFooter: PropTypes.func,
     renderStickyHeader: PropTypes.func,
     renderRow: PropTypes.func,
+    historyLimit: PropTypes.number,
 
     onSearchEnd: PropTypes.func
   };
 
   static defaultProps = {
-    toolbarHeight: Theme.size.toolbarHeight,
-    statusBarHeight: Theme.size.statusBarHeight,
-    sectionHeaderHeight: Theme.size.sectionHeaderHeight,
+    toolbarHeight: 44,
+    sectionHeaderHeight: 24,
     rowHeight: Theme.size.rowHeight,
     sectionIndexTextColor: '#171a23',
     searchListBackgroundColor: Theme.color.primaryDark,
     toolbarBackgroundColor: Theme.color.primaryDark,
     searchBarContainerStyle: {},
     searchOnDefaultValue: false,
-    searchHistoryLimit: 10,
+    historyLimit: 10
   };
 
   constructor(props) {
@@ -144,6 +135,7 @@ export default class SearchList extends Component {
     this.onClickCancel = this.onClickCancel.bind(this);
     this.scrollToSection = this.scrollToSection.bind(this);
     this.onClickHistoryItem = this.onClickHistoryItem.bind(this)
+    this.onSubmitEditing = this.onSubmitEditing.bind(this)
 
     pinyin.setOptions({ checkPolyphone: false, charCase: 2 });
   }
@@ -280,30 +272,11 @@ export default class SearchList extends Component {
     );
   }
 
-  /**
-   * render default list view footer
-   * @returns {XML}
-   * @private
-   */
-  _renderFooter() {
-    return <View style={styles.scrollSpinner} />;
-  }
-
-  /**
-   * render default list view header
-   * @returns {null}
-   * @private
-   */
-  _renderHeader() {
-    return null;
-  }
-
   _renderEmptyResult () {
     return (
-      <View style={styles.emptyDataSource}>
-        <Text style={{color: '#000', fontSize: 16, paddingTop: 100, opacity: 0.3, lineHeight: 24}}> 暂无搜索记录 </Text>
+      <View style={styles.noData}>
+        <Text style={styles.noDataTxt}>暂无搜索历史</Text>
       </View>
-      
     )
   }
 
@@ -373,6 +346,31 @@ export default class SearchList extends Component {
     })
   }
 
+  // 保存搜索记录
+  insertSearch(text) {
+    if (this.state.searchHistory.indexOf(text) != -1) {
+        // 本地历史 已有 搜索内容
+        let index = this.state.searchHistory.indexOf(text);
+        let tempArr = DataBase.arrDelete(this.state.searchHistory, index)
+        tempArr.unshift(text);
+        DataBase.addData('storeHistory', tempArr);
+    } else {
+        // 本地历史 无 搜索内容
+        let tempArr = this.state.searchHistory;
+        let historyLength = tempArr.length
+        //
+        if (historyLength < this.props.historyLimit) {
+          tempArr.unshift(text);
+          DataBase.addData('storeHistory', tempArr);
+        } else {
+          //若超过长度限制，则先删除列表最后一项，然后在头部插入value
+          let tempArr = DataBase.arrDelete(this.state.searchHistory, historyLength - 1)
+          tempArr.unshift(text);
+          DataBase.addData('storeHistory', tempArr);
+        }
+    }
+  }
+
   onPressDelete = () => {
     const deleteTip = this.props.deleteTip;
     Alert.alert(
@@ -385,6 +383,7 @@ export default class SearchList extends Component {
                 searchHistory: [],
               })
               DataBase.delData("storeHistory");
+              console.log("storeHistory!!!", DataBase.getData('storeHistory'))
             }, style: 'destructive'},
         ],
     );
@@ -427,9 +426,7 @@ export default class SearchList extends Component {
               }
           </View>
         </View> :
-        <View style={styles.noData}>
-            <Text style={styles.noDataTxt}>暂无搜索历史</Text>
-        </View>
+        this._renderEmptyResult()
       }
       </View>
     )
@@ -450,10 +447,9 @@ export default class SearchList extends Component {
     this.setState({isShowHistory: false})
   }
 
-  // onSubmitEditing() {
-  //   console.log()
-  //   this.insertSearch(this.state.searchStr);
-  // }
+  onSubmitEditing() {
+    this.insertSearch(this.state.searchStr);
+  }
 
   onClickCancel() {
     this.exitSearchState();
@@ -499,9 +495,8 @@ export default class SearchList extends Component {
         ref="view"
         style={[
           {
-            // 考虑上动画以后页面要向上移动，这里必须拉长
-            height: Theme.size.windowHeight + this.props.toolbarHeight,
-            width: Theme.size.windowWidth,
+            height: Dimensions.get('window').height,
+            width: Dimensions.get('window').width,
           },
           this.props.style
         ]}>
@@ -512,7 +507,6 @@ export default class SearchList extends Component {
               backgroundColor: this.props.searchListBackgroundColor
             }
           ]}>
-          {/* {this._renderToolbar()} */}
 
           <View style={[styles.searchBarContainerStyle,this.props.searchBarContainerStyle]}>
             <SearchBar
@@ -524,6 +518,7 @@ export default class SearchList extends Component {
               onBlur={this.onBlur}
               onClickCancel={this.onClickCancel}
               clearText={this.clearText}
+              onSubmitEditing={this.onSubmitEditing}
               cancelTitle={this.props.cancelTitle}
               cancelTextStyle={this.props.cancelTextStyle}
               searchBarBackgroundColor={this.props.searchBarBackgroundColor}
@@ -539,6 +534,7 @@ export default class SearchList extends Component {
               staticCancelButton={this.props.staticCancelButton}
               showSearchIcon={this.props.showSearchIcon}
               searchBarStyle={this.props.searchBarStyle}
+              historyLimit = {this.props.historyLimit}
               ref="searchBar"
             />
           </View>
@@ -586,10 +582,9 @@ export default class SearchList extends Component {
             (this.props.renderItemSeparator || this._renderItemSeparator.bind(this))
           }
           renderSectionHeader={
-            this.state.isShowSectionHeader && (this.props.renderSectionHeader || this._renderSectionHeader.bind(this))
+            this.state.isShowSectionHeader &&
+            (this.props.renderSectionHeader || this._renderSectionHeader.bind(this))
           }
-          ListFooterComponent={this.props.renderFooter || this._renderFooter.bind(this)}
-          ListHeaderComponent={this.props.renderHeader || this._renderHeader.bind(this)}
           onScrollToIndexFailed={() => {}}
         />
       );
@@ -606,7 +601,6 @@ export default class SearchList extends Component {
    */
   _renderSectionIndex() {
     const {
-      hideSectionList,
       toolbarHeight,
       sectionIndexContainerStyle,
       renderSectionIndexItem

@@ -22,32 +22,6 @@ export default class App extends Component {
     }
   }
 
-  // custom render row
-  // renderRow (index, item, section) {
-  //   console.log("item;::::",item)
-  //   console.log("sectionID;::::",sectionID)
-  //   console.log("rowID;::::",rowID)
-  //   return (
-  //     <TouchableOpacity onPress={() => {
-  //       Alert.alert('Clicked!', `sectionID: ${sectionID}; item: ${item.item.searchStr}`,
-  //         [
-  //           {text: 'OK', onPress: () => console.log('OK Pressed')}
-  //         ],
-  //         {cancelable: true})
-  //     }}>
-  //       <View key={rowID} style={{flex: 1, marginLeft: 16, height: rowHeight, justifyContent: 'center'}}>
-  //         {/* use `HighlightableText` to highlight the search result */}
-  //         <HighlightableText
-  //           matcher={item.matcher}
-  //           text={item.item.searchStr}
-  //           textColor={'#000'}
-  //           hightlightTextColor={'#0069c0'}
-  //         />
-  //       </View>
-  //     </TouchableOpacity>
-  //   )
-  // }
-
   // render empty view when datasource is empty
   renderEmpty () {
     return (
@@ -69,33 +43,22 @@ export default class App extends Component {
     )
   }
 
-  onSearchStart() {
-    console.log("asdfasdfasdf")
-    return (
-      <View style={styles.emptySearchResult}>
-        <Text style={{color: '#979797', fontSize: 18, paddingTop: 20}}> No Result For <Text
-          style={{color: '#171a23', fontSize: 18}}>dasdasd</Text></Text>
-        <Text style={{color: '#979797', fontSize: 18, alignItems: 'center', paddingTop: 10}}>Please search again</Text>
-      </View>
-    )
-  }
-
   render () {
     return (
       <View style={styles.container}>
         <SearchList
           data={this.state.dataSource}
-          // renderRow={this.renderRow.bind(this)}
+          // renderRow={this.renderRow.bind(this)
           renderEmptyResult={this.renderEmptyResult.bind(this)}
           renderBackButton={() => null}
           renderEmpty={this.renderEmpty.bind(this)}
 
           rowHeight={rowHeight}
 
-          toolbarBackgroundColor={'#ffffff'}
           cancelTitle='取消'
           cancelTextStyle={styles.cancelTextStyle}
           onClickBack={() => {}}
+          historyLimit = {3}
 
           searchListBackgroundColor={'#2196f3'}
 
@@ -124,16 +87,6 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     justifyContent: 'flex-start',
     marginTop:20
-  },
-  welcome: {
-    fontSize: 20,
-    textAlign: 'center',
-    margin: 10
-  },
-  instructions: {
-    textAlign: 'center',
-    color: '#333333',
-    marginBottom: 5
   },
   emptyDataSource: {
     flex: 1,

@@ -12,7 +12,6 @@ import React, { Component } from 'react';
 
 import PropTypes from 'prop-types';
 import Theme from './Theme';
-import * as DataBase from './DataBase'
 
 const { cancelButtonWidth: buttonWidth, searchBarHorizontalPadding, searchIconWidth } = Theme.size;
 
@@ -62,11 +61,11 @@ export default class SearchBar extends Component {
     cancelTitle: 'Cancel',
 
     showSearchIcon: true,
-    staticCancelButton: false
+    staticCancelButton: false,
   };
 
   currentValue: string;
-
+  arrDelete
   constructor(props) {
     super(props);
     if (this.props.value !== undefined) {
@@ -91,8 +90,6 @@ export default class SearchBar extends Component {
   }
 
   onChange(value) {
-    // this.currentValue = value;
-    // // this._handleTextChanged(value, true);
     this.props.onChange && this.props.onChange(value);
     this.setState({ value });
   }
@@ -116,9 +113,6 @@ export default class SearchBar extends Component {
   onSubmitEditing() {
     if (this.state.value === '') {
       this.cancelSearch();
-    } else {
-      this.insertSearch(this.state.value)
-      this.getHistory()
     }
     this.props.onSubmitEditing && this.props.onSubmitEditing();
   }
@@ -175,47 +169,6 @@ export default class SearchBar extends Component {
 
   onClickHistoryItem(item) {
     this.setState({ value: item});
-  }
-
-  //获取历史记录
-  getHistory() {
-    // 查询本地历史记录
-    DataBase.getData('storeHistory').then(data => {
-        if (data == null) {
-            this.setState({
-                searchHistory: [],
-            })
-        } else {
-            this.setState({
-                searchHistory: data,
-            })
-        }
-    })
-  }
-
-  // 保存搜索记录
-  insertSearch(text) {
-    if (this.state.searchHistory.indexOf(text) != -1) {
-        // 本地历史 已有 搜索内容
-        let index = this.state.searchHistory.indexOf(text);
-        let tempArr = DataBase.arrDelete(this.state.searchHistory, index)
-        tempArr.unshift(text);
-        DataBase.addData(tempArr);
-    } else {
-        // 本地历史 无 搜索内容
-        let tempArr = this.state.searchHistory;
-        let historyLength = tempArr.length
-        //
-        if (historyLength < 10) {
-          tempArr.unshift(text);
-          DataBase.addData(tempArr);
-        } else {
-          //若超过长度限制，则先删除列表最后一项，然后在头部插入value
-          let tempArr = DataBase.arrDelete(this.state.searchHistory, historyLength - 1)
-          tempArr.unshift(text);
-          DataBase.addData(tempArr);
-        }
-    }
   }
 
   render() {
